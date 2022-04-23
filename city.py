@@ -1,6 +1,5 @@
 class City:
-    def __init__(self, name, latitude, longitude, population):
+    def __init__(self, name, latitude, longitude):
         self.lat = latitude
         self.long = longitude
         self.name = name
-        self.population = population

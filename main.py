@@ -1,6 +1,5 @@
 from tkinter import END, NONE, messagebox
 
-from matplotlib.ft2font import HORIZONTAL
 from loader import DataLoader
 from functools import partial
 
@@ -14,15 +13,22 @@ data = []
 
 #flags
 is_data_set_valid = False
+is_data_clustered = False
+output_generated = False
 
 
 def switch_to_output():
     #globals
     global operation_frame
     global output_frame
-    createOutputFrame(output_frame)
-    output_frame.pack(fill='both', expand=1)
-    operation_frame.forget()
+    global output_generated
+
+    if output_generated == True:
+        createOutputFrame(output_frame)
+        output_frame.pack(fill='both', expand=1)
+        operation_frame.forget()
+    else:
+        messagebox.showerror("No Output", "No Output to show yet.")
 
 
 def switch_to_operation():
@@ -33,24 +39,15 @@ def switch_to_operation():
     output_frame.forget()
 
 
-def getShortestPath(cluster_dictionary, key, lock):
+def getShortestPath(cluster_dictionary, key):
     pathObject = shortestPath.pathFinder()
     graph = pathObject.graphGenerator(cluster_dictionary[key])
     distance, pathIndices = pathObject.pathGenerator(graph)
-    lock.acquire()
     path_dictionary[key] = (distance, pathIndices)
-    lock.release()
 
 
-def printOutput(cluster_dictionary, key):
-    print(f"\nDistance: {path_dictionary[key][0]}")
-    print("new path:")
-    for index in path_dictionary[key][1]:
-        print(cluster_dictionary[key][index].name)
-
-
-def outputString(cluster_dictionary, key):
-    res = "Path x: "
+def outputString(cluster_dictionary, key, index_value):
+    res = f"Path {index_value}, with distance {path_dictionary[key][0]}km : "
     for index in path_dictionary[key][1]:
         res += cluster_dictionary[key][index].name
         res += ", "
@@ -76,6 +73,7 @@ def clusterCallback(current_value, clustering_slider, cluster_result_text):
     global clusters
     global keys
     global is_data_set_valid
+    global is_data_clustered
     #check if there is valid data to cluster
     if is_data_set_valid == False:
         messagebox.showinfo("No Data", "No valid data to cluster.")
@@ -89,28 +87,32 @@ def clusterCallback(current_value, clustering_slider, cluster_result_text):
     keys = list(clusters.keys())
 
     cluster_result_text.set(f"{len(keys)} clusters created.")
+    is_data_clustered = True
 
 
 def shortestPathCallback(path_result_text):
-    output_lock = threading.Lock()
+    #globals
+    global is_data_clustered
+    global path_dictionary
+    global output_generated
 
+    if is_data_clustered == False:
+        messagebox.showerror("Cluster Warning", "Data has not been clustered, cannot calculate shortest paths.")
+
+    path_dictionary = {}
     threadList = []
     for key in keys:
-        t = threading.Thread(target=getShortestPath, args=(clusters, key, output_lock, ))
+        t = threading.Thread(target=getShortestPath, args=(clusters, key,))
         threadList.append(t)
         t.start()
 
     for t in threadList:
         t.join()
 
-    path_keys = list(path_dictionary.keys())
-
-    for key in path_keys:
-        printOutput(clusters, key)
-
     print("\nOutput Complete")
-
     path_result_text.set("All shortest paths calculated.")
+    messagebox.showinfo("Output Status", "Shortest Paths have been calculated.")
+    output_generated = True
 
 
 def createOperationFrame(f):
@@ -138,16 +140,17 @@ def createOperationFrame(f):
     output_screen_button = tk.Button(f, text = "Go to Output Screen", command = switch_to_output).grid(row = 6, column = 3, sticky="E", padx = 10, pady = 10)
 
 def createOutputFrame(f):
-    v = tk.Scrollbar(f)
-    v.grid(row = 0, column = 1, sticky="E", padx = 10, pady = 10)
-    textBody = tk.Text(f, width = 60, height = 15, wrap = NONE, yscrollcommand = v.set)
+    textBody = tk.Text(f, width = 60, height = 15, wrap = NONE)
     path_keys = list(path_dictionary.keys())
 
+    i = 1
+
     for key in path_keys:
-        textBody.insert(END, outputString(clusters, key))
+        textBody.insert(END, outputString(clusters, key, i))
+        i+=1
     
     textBody.grid(row = 0, column = 0, sticky = "W", padx = 10, pady = 10)
-    operation_screen_button = tk.Button(f, text = "Go to operation screen", command = switch_to_operation).grid(row = 6, column = 0, sticky = "W", padx = 10, pady = 10)
+    operation_screen_button = tk.Button(f, text = "Go to operation screen", command = switch_to_operation).grid(row = 6, column = 0, sticky = "W", padx = 10, pady = 5)
 
 
 window = tk.Tk()

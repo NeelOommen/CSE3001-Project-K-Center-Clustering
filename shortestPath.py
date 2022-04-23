@@ -4,7 +4,6 @@ from python_tsp.exact import solve_tsp_dynamic_programming
 
 import numpy as np
 
-
 class pathFinder:
     def graphGenerator(self,chosen_cities):
         #initialize a graph of the required size
