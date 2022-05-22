@@ -154,6 +154,7 @@ def createOutputFrame(f):
 
 
 window = tk.Tk()
+window.title("K-Center Clusterer")
 window.geometry('600x300')
 
 operation_frame = tk.Frame(window)
